@@ -149,17 +149,6 @@ in {
     services.thermald.enable = true;
     
     # ============================================================
-    # Helpful Tools
-    # ============================================================
-    
-    environment.systemPackages = with pkgs; [
-      powertop       # Power consumption analyzer
-      acpi           # Battery status
-      lm_sensors     # Hardware sensors
-      brightnessctl  # Screen brightness control
-    ];
-    
-    # ============================================================
     # Lid Close Behavior
     # ============================================================
     
@@ -255,17 +244,64 @@ in {
     };
     
     # ============================================================
-    # Hibernate Setup (requires swap)
+    # Hibernate Setup
     # ============================================================
     
-    # Note: For hibernate to work, you need:
-    # 1. A swap partition or swapfile >= RAM size
-    # 2. boot.resumeDevice set to swap partition
+    # Auto-configure resume device if swapfile exists
+    # The installer auto-generates swap based on detected RAM
+    # For swapfiles, we also need to find the resume_offset
     # 
-    # Example for swapfile:
-    # swapDevices = [{ device = "/swapfile"; size = 16384; }];  # 16GB
+    # Manual override example:
     # boot.resumeDevice = "/dev/disk/by-label/nixos";
-    # boot.kernelParams = [ "resume_offset=XXXXX" ];  # from filefrag
+    # boot.kernelParams = [ "resume_offset=XXXXX" ];
+    #
+    # To find resume_offset for a swapfile:
+    # sudo filefrag -v /swapfile | head -4
+    # Look for "physical_offset" in the first extent
+    
+    # Helper script to setup hibernate with swapfile
+    environment.systemPackages = (with pkgs; [
+      powertop
+      acpi
+      lm_sensors
+      brightnessctl
+      (writeShellScriptBin "setup-hibernate" ''
+        #!/usr/bin/env bash
+        set -euo pipefail
+        
+        if [[ $EUID -ne 0 ]]; then
+          echo "This script requires root privileges."
+          exec sudo "$0" "$@"
+        fi
+        
+        SWAPFILE="/swapfile"
+        
+        if [[ ! -f "$SWAPFILE" ]]; then
+          echo "No swapfile found at $SWAPFILE"
+          echo "Swap should be auto-configured during installation."
+          exit 1
+        fi
+        
+        echo "Finding resume parameters for hibernate..."
+        
+        # Get the device containing the swapfile
+        RESUME_DEVICE=$(df "$SWAPFILE" | tail -1 | awk '{print $1}')
+        RESUME_UUID=$(blkid -s UUID -o value "$RESUME_DEVICE")
+        
+        # Get the physical offset of the swapfile
+        RESUME_OFFSET=$(filefrag -v "$SWAPFILE" | awk 'NR==4 {print $4}' | sed 's/\.\.//')
+        
+        echo ""
+        echo "Add these to your configuration.nix or hardware-configuration.nix:"
+        echo ""
+        echo "  boot.resumeDevice = \"/dev/disk/by-uuid/$RESUME_UUID\";"
+        echo "  boot.kernelParams = [ \"resume_offset=$RESUME_OFFSET\" ];"
+        echo ""
+        echo "Then run: sudo nixos-rebuild switch"
+        echo ""
+        echo "To test hibernate: systemctl hibernate"
+      '')
+    ]);
     
     # ============================================================
     # Firmware Updates
