@@ -4,6 +4,7 @@
   imports = [
     ./optional/development.nix
     ./optional/gui.nix
+    ./optional/switching.nix
   ];
 
   # ============================================================
