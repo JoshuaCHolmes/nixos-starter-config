@@ -5,6 +5,7 @@
     ./optional/development.nix
     ./optional/gui.nix
     ./optional/switching.nix
+    ./optional/laptop.nix
   ];
 
   # ============================================================
