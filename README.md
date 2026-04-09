@@ -2,6 +2,31 @@
 
 A modular, well-documented NixOS configuration to get you started.
 
+## Installation
+
+### Using NixOS Easy Install (Recommended for Windows users)
+
+See [nixos-easy-install](https://github.com/JoshuaCHolmes/nixos-easy-install) for a graphical installer that sets up NixOS alongside Windows.
+
+### Manual Installation
+
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/JoshuaCHolmes/nixos-starter-config /etc/nixos
+   ```
+
+2. Generate your hardware configuration:
+   ```bash
+   nixos-generate-config --show-hardware-config > hosts/default/hardware-configuration.nix
+   ```
+
+3. Edit your settings in `flake.nix`
+
+4. Install:
+   ```bash
+   sudo nixos-install --flake /etc/nixos#default
+   ```
+
 ## Quick Start
 
 1. **Edit your settings** in `flake.nix`:
@@ -71,6 +96,24 @@ jch.gui = {
   # wsl = true;       # For WSL with WSLg
 };
 ```
+
+### Laptop (`jch.laptop`)
+
+Power management, touchpad, and hardware optimizations for laptops:
+
+```nix
+jch.laptop = {
+  enable = true;
+  hibernateAfterSuspend = true;  # Hibernate after 2h sleep
+  preferDeepSleep = true;        # Use S3 (better battery)
+  aggressivePowerSaving = false; # Reduce performance for battery
+  lidCloseAction = "suspend";    # suspend, hibernate, ignore
+  touchpadTapToClick = true;
+  nvidia = false;                # Enable Optimus support
+};
+```
+
+After first boot on a laptop with swap, run `setup-hibernate` to enable hibernate.
 
 ## Adding a New Machine
 
